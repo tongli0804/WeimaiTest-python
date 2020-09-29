@@ -1,18 +1,26 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
+from datetime import datetime
 
 import requests, time, json, threading, random
 from requests import Session
 
-token=["_educoder_session=e62599e274fddbe7a2a178317b666e1d; autologin_trustie=8aa6b387bb358ec12c9ac148aa08b4e10b0b689e;","autologin_trustie=8aa6b387bb358ec12c9ac148aa08b4e10b0b689e; _educoder_session=350d0ea28b9a0702bebc5a75b3012cfe"]
+token=["275c4436-d9d3-40e2-847d-bbcf66200043",
+"b819c1ba-d14b-4570-a12f-f7a90fe88f98",
+"034cf9ad-b18c-4e3e-a9ab-f61792db9742",
+"d2b9f7c2-8dc2-4fc1-93b6-90ff16456256"]
 class concurrent(object):
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.121 Safari/537.36',
         'Content-Type': 'application/json; charset=UTF-8',
+
+
     }
 
-    def __init__(self, login_url, press_url, phone="1376193000", password="123456"):
+    def __init__(self, press_url, phone="1376193000", password="123456"):
         # self.login_url = login_url
+        r = requests
+
         self.session = []
         self.press_url = press_url
         # self.phone = phone
@@ -20,31 +28,35 @@ class concurrent(object):
         for i in range(THREAD_NUM):
             self.session.append(Session())
             self.session[i].headers = self.headers.copy()
-            self.session[i].headers["Cookie"] = token[i]
+            self.session[i].headers["x-weimai-token"] = token[i]
+            print(self.headers)
 
 
-    def login(self):
-        '''登陆获取session'''
-        data = data = {'t': int(time.time() * 1000), 'login': self.phone, 'password': self.password}
-        res = self.session.post(self.login_url, data=json.dumps(data))
-        XToken = res.json().get('_educoder_session')
-        self.session.headers['X-Token'] = XToken
 
-    def testinterface(self,index):
+    # def login(self):
+    #     '''登陆获取session'''
+    #     data = {"businessType": "string", "couponId": "string"}
+    #     res = self.session.post(self.login_url, data=json.dumps(data))
+    #     XToken = res.json().get('_educoder_session')
+    #     self.session.headers['X-Token'] = XToken
+
+    def testinterface(self, index):
         '''压测接口'''
-        self.session[index].headers['X-UnionId'] = 'of6uw1CUVhP533sQok'
-        data = {}
+
+        #self.session[index].headers['X-UnionId'] = 'of6uw1CUVhP533sQok'
+        data = {"businessType": 320, "couponId": 1595038795969900545}
+        html = self.session[index].post(self.press_url, data=json.dumps(data).encode(encoding='utf-8'))
+        #r = requests[index].post(self.press_url, data=json.dumps(data).encode(encoding='utf-8'))
         global ERROR_NUM
         try:
-            html = self.session[index].get(self.press_url, data=json.dumps(data))
-            # if html.json().get('code') != 0:
-            print(html.json())
-                # ERROR_NUM += 1
+            if html.json().get('code') != 0:
+                print("错误内容"+html.json())
+                ERROR_NUM += 1
         except Exception as e:
             print(e)
             ERROR_NUM += 1
 
-    def testonework(self,index):
+    def testonework(self, index):
         '''一次并发处理单个任务'''
         i = 0
         while i < ONE_WORKER_NUM:
@@ -54,16 +66,21 @@ class concurrent(object):
 
     def run(self):
         '''使用多线程进程并发测试'''
+        dt = datetime.now()
+
         t1 = time.time()
         Threads = []
 
         for i in range(THREAD_NUM):
+
             t = threading.Thread(target=self.testonework(i), name="T" + str(i))
             t.setDaemon(True)
             Threads.append(t)
 
         for t in Threads:
             t.start()
+            #print(dt)
+            #print(str(dt) +" " + t.name )
         for t in Threads:
             t.join()
         t2 = time.time()
@@ -78,16 +95,13 @@ class concurrent(object):
 
 
 if __name__ == '__main__':
-    login_url = 'https://www.educoder.net/api/accounts/login.json'
-    press_url = 'https://www.educoder.net/api/users/get_user_info.json?school=1'
-    phone = "kosasa01"
-    password = "kosasa33!"
 
-    THREAD_NUM = 2  # 并发线程总数
+    press_url = 'http://integration.myweimai.com/activitycenter/api/activity/seckill/seckillcoupon?channelAlias=&channelSource=&channelPlatform=103'
+    THREAD_NUM = 4  # 并发线程总数
     ONE_WORKER_NUM = 1  # 每个线程的循环次数
     # LOOP_SLEEP = 0.1  # 每次请求时间间隔(秒)
     ERROR_NUM = 0  # 出错数
 
-    obj = concurrent(login_url=login_url, press_url=press_url, phone=phone, password=password)
+    obj = concurrent(press_url=press_url)
     # obj.login()
     obj.run()
